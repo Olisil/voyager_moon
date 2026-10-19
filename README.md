@@ -87,6 +87,17 @@ any mount path works. The map data in `src/moon-data/` is bundled like the app's
   same list, instantly and offline, and frames outlined areas to fit the screen.
 - **Distances** use the Moon's radius, 1,737.4 km.
 
+## Landing sites and Historical trips
+
+- **Landing sites**: every spacecraft that has landed on the Moon, from Luna 9 (1966) to
+  Blue Ghost 1 and IM-2 (2025), in `src/lib/landings.ts`. Each is drawn as a history mark over
+  a faint cross on the ground; sites that crowd each other on screen merge into one mark with a
+  count. Switch them off per scene under Look, "Areas and sights". They also come up in search.
+- **Historical trips**: the Apollo moonwalks and rover drives, on the start page. They are
+  ordinary project files in `src/historical-trips/` (the same format as "Download file"), made
+  by `tools/make_historical_trips.ts`; opening one saves a copy to your projects. See the
+  README in that folder for where the positions come from.
+
 ## Limits
 
 - Detail: about 118 m per pixel. Curves closer than about 20 m apart look rounded when zoomed in

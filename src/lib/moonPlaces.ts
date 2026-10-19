@@ -1,4 +1,5 @@
 import type { LngLat } from "./types";
+import { LANDINGS } from "./landings";
 
 /**
  * Named places on the Moon: for the search box, the outlined areas and the sights.
@@ -37,28 +38,7 @@ const P = (
   extra: Partial<Pick<MoonPlace, "size" | "tilt" | "aliases">> = {},
 ): MoonPlace => ({ kind, name, detail, lat, lon, zoom, ...extra });
 
-export const MOON_PLACES: MoonPlace[] = [
-  // landing sites
-  P("site", "Apollo 11", "Tranquility Base, 1969", 0.6741, 23.473, 13, { aliases: "eagle armstrong aldrin tranquility base" }),
-  P("site", "Apollo 12", "Ocean of Storms, 1969", -3.0124, -23.4216, 13, { aliases: "intrepid surveyor 3" }),
-  P("site", "Apollo 14", "Fra Mauro, 1971", -3.6453, -17.4714, 13, { aliases: "antares shepard fra mauro" }),
-  P("site", "Apollo 15", "Hadley–Apennine, 1971", 26.1322, 3.6339, 12, { aliases: "falcon rover hadley" }),
-  P("site", "Apollo 16", "Descartes Highlands, 1972", -8.973, 15.5002, 12, { aliases: "orion descartes" }),
-  P("site", "Apollo 17", "Taurus–Littrow, 1972", 20.1908, 30.7717, 12, { aliases: "challenger cernan schmitt taurus littrow" }),
-  P("site", "Luna 9", "First soft landing, 1966", 7.08, -64.37, 12),
-  P("site", "Luna 16", "Sample return, 1970", -0.513, 56.364, 12),
-  P("site", "Lunokhod 1", "Rover, Luna 17, 1970", 38.28, -35.0, 12),
-  P("site", "Lunokhod 2", "Rover, Luna 21, 1973", 25.85, 30.45, 12, { aliases: "le monnier" }),
-  P("site", "Luna 24", "Sample return, 1976", 12.71, 62.21, 12),
-  P("site", "Surveyor 1", "Landing site, 1966", -2.47, -43.34, 12),
-  P("site", "Chang'e 3", "Yutu rover, 2013", 44.12, -19.51, 12, { aliases: "change yutu" }),
-  P("site", "Chang'e 4", "Yutu-2 rover, far side, 2019", -45.44, 177.6, 12, { aliases: "change von karman" }),
-  P("site", "Chang'e 5", "Sample return, 2020", 43.06, -51.92, 12, { aliases: "change mons rumker" }),
-  P("site", "Chandrayaan-3", "Vikram and Pragyan, 2023", -69.37, 32.32, 12, { aliases: "vikram pragyan" }),
-  P("site", "SLIM", "Landing site, 2024", -13.32, 25.25, 12),
-  P("site", "Odysseus", "IM-1, 2024", -80.13, 1.44, 11, { aliases: "intuitive machines malapert im-1" }),
-  P("site", "Blue Ghost 1", "Landing site, 2025", 18.56, 61.81, 12, { aliases: "mare crisium mons latreille" }),
-
+const PLACES: MoonPlace[] = [
   // maria and basins (ovals of about the right size)
   P("mare", "Mare Imbrium", "Sea of Showers", 32.8, -15.6, 5, { size: [1150, 1050] }),
   P("mare", "Mare Serenitatis", "Sea of Serenity", 28.0, 17.5, 6, { size: [640, 700] }),
@@ -108,6 +88,14 @@ export const MOON_PLACES: MoonPlace[] = [
   P("feature", "Vallis Schröteri", "Schröter's Valley", 26.2, -50.8, 9, { aliases: "schroter schroeter" }),
   P("feature", "Reiner Gamma", "A bright swirl", 7.5, -59.0, 9, { aliases: "swirl" }),
   P("feature", "Marius Hills", "Volcanic domes and a skylight pit", 13.4, -55.9, 9, { aliases: "pit skylight" }),
+];
+
+/** Everything searchable: the landing sites (lib/landings.ts) first, then the named places. */
+export const MOON_PLACES: MoonPlace[] = [
+  ...LANDINGS.map((l) =>
+    P("site", l.name, l.detail, l.lat, l.lon, l.crewed ? 13 : 12, { aliases: `${l.aliases ?? ""} landing site ${l.year}` }),
+  ),
+  ...PLACES,
 ];
 
 export const MOON_R_KM = 1737.4;

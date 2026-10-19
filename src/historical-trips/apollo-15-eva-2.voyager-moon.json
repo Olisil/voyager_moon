@@ -1,0 +1,190 @@
+{
+  "format": "voyager-moon",
+  "version": 2,
+  "project": {
+    "id": "historical-apollo-15-eva-2",
+    "version": 2,
+    "name": "Apollo 15 · EVA 2 · Spur and Dune, the Genesis Rock",
+    "createdAt": 1792368000000,
+    "updatedAt": 1792368000000,
+    "scenes": [
+      {
+        "id": "scene-1",
+        "name": "EVA 2 · Spur and Dune, the Genesis Rock",
+        "route": {
+          "kind": "drawn",
+          "points": [
+            {
+              "at": [
+                3.6333,
+                26.13239
+              ]
+            },
+            {
+              "at": [
+                3.67,
+                25.98
+              ],
+              "pause": 1.5
+            },
+            {
+              "at": [
+                3.66,
+                26.04
+              ],
+              "pause": 1
+            },
+            {
+              "at": [
+                3.63803,
+                26.13174
+              ]
+            }
+          ],
+          "smooth": true,
+          "startTransport": "car"
+        },
+        "look": {
+          "theme": "curves",
+          "terrain": true,
+          "terrainStyle": "shading",
+          "placeNames": false,
+          "outline": true,
+          "showAhead": true,
+          "symbolScale": 1,
+          "transports": {
+            "arrow": {
+              "color": "auto",
+              "width": 6,
+              "line": "solid",
+              "symbol": "badge",
+              "symbolColor": null
+            },
+            "walk": {
+              "color": "auto",
+              "width": 6,
+              "line": "dotted",
+              "symbol": "badge",
+              "symbolColor": null
+            },
+            "car": {
+              "color": "auto",
+              "width": 6,
+              "line": "solid",
+              "symbol": "badge",
+              "symbolColor": null
+            },
+            "plane": {
+              "color": "auto",
+              "width": 6,
+              "line": "dashed",
+              "symbol": "badge",
+              "symbolColor": null
+            }
+          },
+          "compass": {
+            "on": false,
+            "corner": "tr",
+            "style": "needle",
+            "size": 1
+          },
+          "markers": {
+            "start": "cross",
+            "finish": "none",
+            "finishFromStart": false,
+            "legIcons": false
+          },
+          "sun": {
+            "azimuth": 100,
+            "altitude": 14
+          },
+          "relief": 1,
+          "areas": {
+            "on": true,
+            "names": true,
+            "color": "auto"
+          },
+          "sights": {
+            "on": true,
+            "names": true
+          },
+          "history": {
+            "on": true,
+            "names": true
+          }
+        },
+        "signs": [
+          {
+            "id": "sign-1-1",
+            "at": [
+              3.6333,
+              26.13239
+            ],
+            "style": "plate",
+            "text": "Falcon",
+            "show": "always",
+            "pause": 0
+          },
+          {
+            "id": "sign-1-2",
+            "at": [
+              3.67,
+              25.98
+            ],
+            "style": "flag",
+            "text": "Station 7 · Spur, the Genesis Rock",
+            "show": "passed",
+            "pause": 0
+          },
+          {
+            "id": "sign-1-3",
+            "at": [
+              3.66,
+              26.04
+            ],
+            "style": "flag",
+            "text": "Station 4 · Dune",
+            "show": "passed",
+            "pause": 0
+          }
+        ],
+        "signScale": 1,
+        "camera": {
+          "mode": "follow",
+          "zoom": 12.734832,
+          "pitch": 50,
+          "up": "travel",
+          "lookAhead": 0.15,
+          "steadiness": "smooth",
+          "openWide": true,
+          "closeWide": false,
+          "fixedView": null,
+          "startView": null,
+          "endView": null
+        },
+        "timing": {
+          "duration": 18,
+          "easing": "ease"
+        },
+        "view": {
+          "center": [
+            3.65165,
+            26.056195
+          ],
+          "zoom": 11.434832,
+          "bearing": 0,
+          "pitch": 0
+        }
+      }
+    ],
+    "output": {
+      "aspect": "16:9",
+      "resolution": 1080,
+      "fps": 30,
+      "holdStart": 1,
+      "holdEnd": 1.5,
+      "credit": true,
+      "joinScenes": false
+    }
+  }
+}

@@ -735,6 +735,22 @@ input[type="range"] {
   font-size: 40px;
   line-height: 44px;
 }
+.home-history .home-projects-head {
+  margin-bottom: var(--space--8);
+}
+.home-history > .hint {
+  max-width: 760px;
+  margin: 0 0 var(--space--24);
+}
+button.card-open {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
 .empty {
   padding: var(--space--30);
   border: var(--stroke--default) dashed var(--dim-grey);

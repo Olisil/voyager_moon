@@ -94,8 +94,10 @@ export interface Scene {
     relief: number;
     /** outlines of maria, basins and big craters; colour "auto" follows the look */
     areas: { on: boolean; names: boolean; color: string };
-    /** landing sites and landmarks, as points */
+    /** landmarks like the Straight Wall, as points */
     sights: { on: boolean; names: boolean };
+    /** every spacecraft that has landed: a history mark over a faint cross on the ground */
+    history: { on: boolean; names: boolean };
   };
   signs: Sign[];
   signScale: number;
@@ -195,6 +197,7 @@ export function newScene(name = "Scene 1", lookFrom?: Scene): Scene {
           relief: 1,
           areas: { on: true, names: true, color: "auto" },
           sights: { on: true, names: true },
+          history: { on: true, names: true },
         },
     signs: [],
     signScale: lookFrom?.signScale ?? 1,
@@ -281,6 +284,7 @@ function coerceScene(raw: Partial<Scene>, i: number): Scene {
   look.sun = { ...base.look.sun, ...raw.look?.sun };
   look.areas = { ...base.look.areas, ...raw.look?.areas };
   look.sights = { ...base.look.sights, ...raw.look?.sights };
+  look.history = { ...base.look.history, ...raw.look?.history };
   if (!["curves", "curves-paper", "curves-blueprint", "curves-colour", "relief"].includes(look.theme)) look.theme = base.look.theme;
   return {
     ...base,

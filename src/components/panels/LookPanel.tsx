@@ -218,13 +218,24 @@ export function LookPanel(props: {
         )}
         <Toggle
           label="Sights"
-          hint="Landing sites as dots, landmarks like the Straight Wall and Hadley Rille as diamonds."
+          hint="Landmarks like the Straight Wall and Hadley Rille, as diamonds."
           checked={look.sights.on}
           onChange={(v) => setLook({ sights: { ...look.sights, on: v } })}
         />
         {look.sights.on && (
           <div className="nested">
             <Toggle label="Names of the sights" checked={look.sights.names} onChange={(v) => setLook({ sights: { ...look.sights, names: v } })} />
+          </div>
+        )}
+        <Toggle
+          label="Landing sites"
+          hint="Every spacecraft that has landed, from Luna 9 to today: a history mark over a faint cross on the ground. Sites close together on screen are grouped, with how many there are."
+          checked={look.history.on}
+          onChange={(v) => setLook({ history: { ...look.history, on: v } })}
+        />
+        {look.history.on && (
+          <div className="nested">
+            <Toggle label="Names of the landings" checked={look.history.names} onChange={(v) => setLook({ history: { ...look.history, names: v } })} />
           </div>
         )}
         <p className="hint">Names show when an area is a good size on screen, and never on top of each other.</p>

@@ -1,0 +1,172 @@
+{
+  "format": "voyager-moon",
+  "version": 2,
+  "project": {
+    "id": "historical-apollo-16-eva-3",
+    "version": 2,
+    "name": "Apollo 16 · EVA 3 · North Ray crater",
+    "createdAt": 1792368000000,
+    "updatedAt": 1792368000000,
+    "scenes": [
+      {
+        "id": "scene-1",
+        "name": "EVA 3 · North Ray crater",
+        "route": {
+          "kind": "drawn",
+          "points": [
+            {
+              "at": [
+                15.5011,
+                -8.9734
+              ]
+            },
+            {
+              "at": [
+                15.490012,
+                -8.831542
+              ],
+              "pause": 1.5
+            },
+            {
+              "at": [
+                15.5037,
+                -8.9729
+              ]
+            }
+          ],
+          "smooth": true,
+          "startTransport": "car"
+        },
+        "look": {
+          "theme": "curves",
+          "terrain": true,
+          "terrainStyle": "shading",
+          "placeNames": false,
+          "outline": true,
+          "showAhead": true,
+          "symbolScale": 1,
+          "transports": {
+            "arrow": {
+              "color": "auto",
+              "width": 6,
+              "line": "solid",
+              "symbol": "badge",
+              "symbolColor": null
+            },
+            "walk": {
+              "color": "auto",
+              "width": 6,
+              "line": "dotted",
+              "symbol": "badge",
+              "symbolColor": null
+            },
+            "car": {
+              "color": "auto",
+              "width": 6,
+              "line": "solid",
+              "symbol": "badge",
+              "symbolColor": null
+            },
+            "plane": {
+              "color": "auto",
+              "width": 6,
+              "line": "dashed",
+              "symbol": "badge",
+              "symbolColor": null
+            }
+          },
+          "compass": {
+            "on": false,
+            "corner": "tr",
+            "style": "needle",
+            "size": 1
+          },
+          "markers": {
+            "start": "cross",
+            "finish": "none",
+            "finishFromStart": false,
+            "legIcons": false
+          },
+          "sun": {
+            "azimuth": 100,
+            "altitude": 14
+          },
+          "relief": 1,
+          "areas": {
+            "on": true,
+            "names": true,
+            "color": "auto"
+          },
+          "sights": {
+            "on": true,
+            "names": true
+          },
+          "history": {
+            "on": true,
+            "names": true
+          }
+        },
+        "signs": [
+          {
+            "id": "sign-1-1",
+            "at": [
+              15.5011,
+              -8.9734
+            ],
+            "style": "plate",
+            "text": "Orion",
+            "show": "always",
+            "pause": 0
+          },
+          {
+            "id": "sign-1-2",
+            "at": [
+              15.490012,
+              -8.831542
+            ],
+            "style": "flag",
+            "text": "Station 11 · North Ray, House Rock",
+            "show": "passed",
+            "pause": 0
+          }
+        ],
+        "signScale": 1,
+        "camera": {
+          "mode": "follow",
+          "zoom": 12.838152,
+          "pitch": 50,
+          "up": "travel",
+          "lookAhead": 0.15,
+          "steadiness": "smooth",
+          "openWide": true,
+          "closeWide": false,
+          "fixedView": null,
+          "startView": null,
+          "endView": null
+        },
+        "timing": {
+          "duration": 16,
+          "easing": "ease"
+        },
+        "view": {
+          "center": [
+            15.496856,
+            -8.902471
+          ],
+          "zoom": 11.538152,
+          "bearing": 0,
+          "pitch": 0
+        }
+      }
+    ],
+    "output": {
+      "aspect": "16:9",
+      "resolution": 1080,
+      "fps": 30,
+      "holdStart": 1,
+      "holdEnd": 1.5,
+      "credit": true,
+      "joinScenes": false
+    }
+  }
+}

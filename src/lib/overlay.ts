@@ -6,6 +6,7 @@ import { lineColor } from "./colors";
 import { TRANSPORTS } from "./transports";
 import { lookById } from "./mapStyles";
 import { MOON_PLACES, MOON_R_KM } from "./moonPlaces";
+import { LANDINGS, type Landing } from "./landings";
 import type { LngLat, Scene, Sign, TransportId } from "./types";
 
 export const FONT_HEAD = '"Neugrotypeface", "Raleway Variablefont Wght", "Raleway Variable", sans-serif';
@@ -355,7 +356,7 @@ function drawMarkers(g: CanvasRenderingContext2D, o: OverlayInput) {
  */
 function drawMoonNames(g: CanvasRenderingContext2D, o: OverlayInput) {
   const look = o.scene.look;
-  if (o.zoom === undefined || (!look.areas.on && !look.sights.on)) return;
+  if (o.zoom === undefined || (!look.areas.on && !look.sights.on && !look.history?.on)) return;
   const zoom = o.zoom;
   const pxPerDeg = (512 * Math.pow(2, zoom)) / 360;
   const kmPerDeg = (Math.PI * MOON_R_KM) / 180;
@@ -388,11 +389,12 @@ function drawMoonNames(g: CanvasRenderingContext2D, o: OverlayInput) {
   };
 
   g.save();
-  // sights first: they are small and exact, so they win over area names
+  // landings first, then sights: small and exact, they win over area names
+  if (look.history?.on) drawLandings(g, o, zoom, pxPerDeg, kmPerDeg, colour, ink, taken, text);
   if (look.sights.on) {
     for (const p of MOON_PLACES) {
-      if (p.kind !== "site" && p.kind !== "feature") continue;
-      if (zoom < (p.kind === "site" ? 3.5 : 5.5)) continue;
+      if (p.kind !== "feature") continue;
+      if (zoom < 5.5) continue;
       const s = o.toScreen([p.lon, p.lat]);
       if (s.x < -20 || s.y < -20 || s.x > o.width + 20 || s.y > o.height + 20) continue;
       // a sign already marks this place
@@ -403,14 +405,11 @@ function drawMoonNames(g: CanvasRenderingContext2D, o: OverlayInput) {
       g.save();
       g.translate(s.x, s.y);
       g.beginPath();
-      if (p.kind === "site") g.arc(0, 0, 4.2, 0, Math.PI * 2);
-      else {
-        g.moveTo(0, -5);
-        g.lineTo(4.5, 0);
-        g.lineTo(0, 5);
-        g.lineTo(-4.5, 0);
-        g.closePath();
-      }
+      g.moveTo(0, -5);
+      g.lineTo(4.5, 0);
+      g.lineTo(0, 5);
+      g.lineTo(-4.5, 0);
+      g.closePath();
       g.fillStyle = ink;
       g.fill();
       g.lineWidth = 2;
@@ -434,6 +433,172 @@ function drawMoonNames(g: CanvasRenderingContext2D, o: OverlayInput) {
     }
   }
   g.restore();
+}
+
+// ---------- landing sites ----------
+
+/** Sites closer than this on screen are drawn as one mark with a count. */
+const CLUSTER_PX = 30;
+/** How far above its cross the history mark floats. */
+const STEM_PX = 22;
+
+type TextFn = (label: string, x: number, y: number, font: string, fill: string, align: CanvasTextAlign, spacing?: string) => boolean;
+
+/** The history symbol: a clock face with an arrow running back round it. */
+function drawHistoryIcon(g: CanvasRenderingContext2D, x: number, y: number, r: number, fill: string, ink: string, ring: string) {
+  g.save();
+  g.translate(x, y);
+  g.beginPath();
+  g.arc(0, 0, r, 0, Math.PI * 2);
+  g.fillStyle = fill;
+  g.fill();
+  g.lineWidth = 1.5;
+  g.strokeStyle = ring;
+  g.stroke();
+  const a = r * 0.55;
+  g.strokeStyle = ink;
+  g.fillStyle = ink;
+  g.lineWidth = 1.6;
+  g.lineCap = "round";
+  g.lineJoin = "round";
+  // the arrow: most of a circle, open at the top left, with its head pointing back
+  const from = Math.PI * 1.05;
+  const to = Math.PI * 2.75;
+  g.beginPath();
+  g.arc(0, 0, a, from, to);
+  g.stroke();
+  const hx = Math.cos(from) * a;
+  const hy = Math.sin(from) * a;
+  g.beginPath();
+  g.moveTo(hx - a * 0.5, hy - a * 0.1);
+  g.lineTo(hx + a * 0.05, hy + a * 0.55);
+  g.lineTo(hx + a * 0.45, hy - a * 0.15);
+  g.closePath();
+  g.fill();
+  // the hands
+  g.beginPath();
+  g.moveTo(0, -a * 0.55);
+  g.lineTo(0, 0);
+  g.lineTo(a * 0.42, a * 0.3);
+  g.stroke();
+  g.restore();
+}
+
+function drawLandings(
+  g: CanvasRenderingContext2D,
+  o: OverlayInput,
+  zoom: number,
+  pxPerDeg: number,
+  kmPerDeg: number,
+  colour: string,
+  ink: string,
+  taken: [number, number, number, number][],
+  text: TextFn,
+) {
+  if (zoom < 1.5) return;
+  const names = o.scene.look.history?.names ?? true;
+  const margin = 40;
+  const seen: { l: Landing; x: number; y: number }[] = [];
+  for (const l of LANDINGS) {
+    const s = o.toScreen([l.lon, l.lat]);
+    if (!Number.isFinite(s.x) || s.x < -margin || s.y < -margin || s.x > o.width + margin || s.y > o.height + margin) continue;
+    seen.push({ l, x: s.x, y: s.y });
+  }
+  if (!seen.length) return;
+
+  // a faint cross lying on the ground at each touchdown point: its arms are measured on the
+  // surface, so they tilt and shorten with the camera like the ground does
+  g.save();
+  g.strokeStyle = ink;
+  g.globalAlpha = 0.5;
+  g.lineWidth = 1.25;
+  g.lineCap = "round";
+  for (const { l, x, y } of seen) {
+    const cos = Math.max(0.05, Math.cos((l.lat * Math.PI) / 180));
+    const armKm = (7 / pxPerDeg) * kmPerDeg * cos;
+    const dLat = armKm / kmPerDeg;
+    const dLon = armKm / (kmPerDeg * cos);
+    const n = o.toScreen([l.lon, l.lat + dLat]);
+    const sth = o.toScreen([l.lon, l.lat - dLat]);
+    const ea = o.toScreen([l.lon + dLon, l.lat]);
+    const w = o.toScreen([l.lon - dLon, l.lat]);
+    // far from the camera in a steep view the projection can fold; fall back to a flat cross
+    const ok = [n, sth, ea, w].every((p) => Number.isFinite(p.x) && Math.hypot(p.x - x, p.y - y) < 40);
+    g.beginPath();
+    if (ok) {
+      g.moveTo(n.x, n.y);
+      g.lineTo(sth.x, sth.y);
+      g.moveTo(ea.x, ea.y);
+      g.lineTo(w.x, w.y);
+    } else {
+      g.moveTo(x - 6, y);
+      g.lineTo(x + 6, y);
+      g.moveTo(x, y - 4);
+      g.lineTo(x, y + 4);
+    }
+    g.stroke();
+  }
+  g.restore();
+
+  // group sites that crowd each other on screen: crewed landings lead their group
+  const order = [...seen].sort((a, b) => Number(b.l.crewed) - Number(a.l.crewed) || a.l.year - b.l.year);
+  const groups: { x: number; y: number; members: typeof seen }[] = [];
+  for (const m of order) {
+    const near = groups.find((c) => Math.hypot(c.x - m.x, c.y - m.y) < CLUSTER_PX);
+    if (near) near.members.push(m);
+    else groups.push({ x: m.x, y: m.y, members: [m] });
+  }
+
+  const r = 9.5;
+  const fill = o.brightMap ? "#ffffff" : "#111214";
+  const signAt = (x: number, y: number) =>
+    o.scene.signs.some((sg) => {
+      const q = o.toScreen(sg.at);
+      return Math.hypot(q.x - x, q.y - y) < 24;
+    });
+  for (const c of groups) {
+    const cx = c.members.reduce((a, m) => a + m.x, 0) / c.members.length;
+    const cy = c.members.reduce((a, m) => a + m.y, 0) / c.members.length;
+    // a sign of the user's own already marks this landing: leave it the faint cross only
+    if (c.members.length === 1 && signAt(cx, cy)) continue;
+    const iy = cy - STEM_PX;
+    // the stem from the ground to the mark
+    g.save();
+    g.strokeStyle = colour;
+    g.globalAlpha = 0.8;
+    g.lineWidth = 1.25;
+    g.beginPath();
+    g.moveTo(cx, cy - 2);
+    g.lineTo(cx, iy + r);
+    g.stroke();
+    g.restore();
+    drawHistoryIcon(g, cx, iy, r, fill, colour, colour);
+    taken.push([cx - r - 2, iy - r - 2, 2 * r + 4, STEM_PX + r + 4]);
+    if (c.members.length > 1) {
+      // how many sites the mark stands for
+      const label = String(c.members.length);
+      g.save();
+      g.font = `700 10px ${FONT_BODY}`;
+      const bw = Math.max(15, g.measureText(label).width + 8);
+      const bx = cx + r * 0.55;
+      const by = iy - r - 1;
+      g.beginPath();
+      g.roundRect(bx, by, bw, 15, 7.5);
+      g.fillStyle = colour;
+      g.fill();
+      g.lineWidth = 1.5;
+      g.strokeStyle = fill;
+      g.stroke();
+      g.fillStyle = fill;
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      g.fillText(label, bx + bw / 2, by + 7.8);
+      g.restore();
+      taken.push([bx, by, bw, 15]);
+    } else if (names) {
+      text(c.members[0].l.name, cx + r + 6, iy, `600 12px ${FONT_BODY}`, ink, "left");
+    }
+  }
 }
 
 // ---------- signs ----------

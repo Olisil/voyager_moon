@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { deleteProject, downloadProjectFile, duplicateProject, importProjectFile, listProjects, saveProject } from "../lib/db";
-import { toXY, unwrap } from "../lib/geo";
+import { routeLengthKm, toXY, unwrap } from "../lib/geo";
 import { lineColor } from "../lib/colors";
 import { navigate } from "../router";
 import { ThemeToggle } from "../theme";
@@ -8,6 +8,7 @@ import logoUrl from "../assets/voyager-moon-logo.svg";
 import { demoProject, newProject, type Project } from "../lib/types";
 import { HeaderNav } from "./HeaderNav";
 import { hasMoonData } from "../lib/moonData";
+import { copyOfTrip, HISTORICAL_TRIPS, type HistoricalTrip } from "../lib/historical";
 
 function ago(ts: number) {
   const s = Math.round((Date.now() - ts) / 1000);
@@ -21,9 +22,12 @@ function ago(ts: number) {
   return new Date(ts).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
-/** The first scene's route, drawn as a small line in its leg colours. */
-function RouteThumb({ project }: { project: Project }) {
-  const scene = project.scenes.find((s) => s.route.points.length > 1);
+/** The first scene's route (or the longest, for trips with many), drawn as a small line in its leg colours. */
+function RouteThumb({ project, longest = false }: { project: Project; longest?: boolean }) {
+  const routed = project.scenes.filter((s) => s.route.points.length > 1);
+  const scene = longest
+    ? routed.reduce<(typeof routed)[number] | undefined>((a, s) => (!a || routeLengthKm(s.route.points.map((p) => p.at)) > routeLengthKm(a.route.points.map((p) => p.at)) ? s : a), undefined)
+    : routed[0];
   if (!scene) return <div className="thumb thumb-empty">No route yet</div>;
   const pts = unwrap(scene.route.points.map((p) => p.at)).map(toXY);
   let [x0, y0] = pts[0];
@@ -71,7 +75,14 @@ export function Home() {
   }, []);
 
   const create = async (demo = false) => {
-    const p = demo ? demoProject() : newProject();
+    const apollo17 = HISTORICAL_TRIPS.find((t) => t.file.startsWith("apollo-17-eva-2"));
+    const p = demo ? (apollo17 ? copyOfTrip(apollo17) : demoProject()) : newProject();
+    await saveProject(p);
+    navigate(`/p/${p.id}`);
+  };
+  /** Historical trips open as a copy in your projects; the original stays as it is. */
+  const openTrip = async (t: HistoricalTrip) => {
+    const p = copyOfTrip(t);
     await saveProject(p);
     navigate(`/p/${p.id}`);
   };
@@ -170,9 +181,9 @@ export function Home() {
           </div>
           {projects === null ? null : projects.length === 0 ? (
             <div className="empty">
-              <p>No projects yet. Create one, open a project file, or start from the Apollo 17 example.</p>
+              <p>No projects yet. Create one, open a project file, or start from one of the historical trips below.</p>
               <button type="button" className="btn" onClick={() => create(true)}>
-                Open the example
+                Open Apollo 17
               </button>
             </div>
           ) : (
@@ -218,6 +229,43 @@ export function Home() {
             </ul>
           )}
         </section>
+
+        {HISTORICAL_TRIPS.length > 0 && (
+          <section className="home-projects home-history" aria-labelledby="history-title">
+            <div className="home-projects-head">
+              <h2 id="history-title">Historical trips</h2>
+              <span className="pill">{HISTORICAL_TRIPS.length} trips</span>
+            </div>
+            <p className="hint">
+              The Apollo moonwalks and rover drives, from the landing sites through the real stations. Each opens as a copy in your projects, ready to edit and render.
+            </p>
+            <ul className="cards">
+              {HISTORICAL_TRIPS.map((t) => (
+                <li key={t.file} className="card">
+                  <button type="button" className="card-open" onClick={() => openTrip(t)}>
+                    <RouteThumb project={t.project} />
+                    <span className="card-name">{t.project.name}</span>
+                  </button>
+                  <div className="card-meta">
+                    <span className="pill">{t.rover ? "Rover drive" : "Moonwalk"}</span>
+                    <span className="card-time">
+                      {t.year ? `${t.year} · ` : ""}
+                      {t.km < 1 ? `${Math.round(t.km * 1000)} m` : `${t.km.toFixed(1)} km`}
+                    </span>
+                  </div>
+                  <div className="card-actions">
+                    <button type="button" className="btn btn-small" onClick={() => openTrip(t)}>
+                      Open a copy
+                    </button>
+                    <button type="button" className="btn btn-small" onClick={() => downloadProjectFile(t.project)}>
+                      Download file
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </main>
 
       <footer className="home-foot">
