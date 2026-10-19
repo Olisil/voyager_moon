@@ -1305,7 +1305,8 @@ label.source-card:hover,
   border-radius: 3px;
   background: #0e0e0e;
   color: #e6e6e6;
-  font-family: var(--headings);
+  font-family: var(--font-body);
+  font-weight: 500;
 }
 .sign-style-tag .sign-sample {
   padding: 2px 10px;
@@ -1330,11 +1331,13 @@ label.source-card:hover,
   padding: 2px 16px 2px 8px;
   background: #c5a11f;
   color: #0e0e0e;
-  font-family: var(--headings);
+  font-family: var(--font-body);
+  font-weight: 500;
   clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 50%, 100% 100%, 0 100%);
 }
 .sign-style-caption .sign-sample {
-  font-family: var(--headings);
+  font-family: var(--font-body);
+  font-weight: 500;
   font-size: 20px;
 }
 .sign-style-photo .sign-sample {

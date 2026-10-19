@@ -623,7 +623,7 @@ function drawSign(g: CanvasRenderingContext2D, sign: Sign, k: number, image: Ove
   g.textBaseline = "middle";
   switch (sign.style) {
     case "plate": {
-      g.font = `500 ${18 * k}px ${FONT_HEAD}`;
+      g.font = `500 ${18 * k}px ${FONT_BODY}`;
       const w = textWidth(g, text) + 28 * k;
       const h = 38 * k;
       const post = 22 * k;
@@ -677,7 +677,7 @@ function drawSign(g: CanvasRenderingContext2D, sign: Sign, k: number, image: Ove
       return [-8 * k, -12 * k, w + 22 * k, 24 * k];
     }
     case "flag": {
-      g.font = `500 ${15 * k}px ${FONT_HEAD}`;
+      g.font = `500 ${15 * k}px ${FONT_BODY}`;
       const pole = 56 * k;
       const w = textWidth(g, text) + 26 * k;
       const h = 26 * k;
@@ -699,7 +699,7 @@ function drawSign(g: CanvasRenderingContext2D, sign: Sign, k: number, image: Ove
       return [-6 * k, -pole - 2 * k, w + 8 * k, pole + 8 * k];
     }
     case "caption": {
-      g.font = `500 ${30 * k}px ${FONT_HEAD}`;
+      g.font = `500 ${30 * k}px ${FONT_BODY}`;
       const w = textWidth(g, text);
       g.textAlign = "center";
       g.shadowColor = "rgba(0,0,0,0.7)";
