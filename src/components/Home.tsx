@@ -127,10 +127,10 @@ export function Home() {
       <main className="home-main">
         <section className="home-hero">
           <h1>Routes on the Moon</h1>
-          <p className="lead">Draw a moonwalk, a rover drive or a lander hop across real lunar mountains and craters, set the sun, add signs and a camera move, and render an MP4 up to 4K.</p>
+          <p className="lead">Draw a moonwalk, a rover drive or a lander hop across the real mountains and craters of the Moon, drawn in 3D as height curves under a sun you place. Add signs and a camera move, and render an MP4 up to 4K.</p>
           {!hasMoonData() && (
             <p className="error" role="status">
-              The Moon map data isn't bundled yet, so the ground is flat and grey. Run <code>tools/make_moon_tiles.py</code> (see the README).
+              The Moon's height data isn't bundled yet, so the ground is flat. Run <code>tools/make_moon_tiles.py</code> (see the README).
             </p>
           )}
           <div className="button-group">
@@ -221,7 +221,7 @@ export function Home() {
       </main>
 
       <footer className="home-foot">
-        <span>Moon maps: NASA/GSFC/Arizona State University, Lunar Reconnaissance Orbiter (LOLA, LROC WAC), via USGS Astrogeology</span>
+        <span>Moon heights: NASA/GSFC, Lunar Reconnaissance Orbiter (LOLA), via USGS Astrogeology</span>
         <a href="/">nassau.se</a>
       </footer>
       {dragOver && <div className="drop-veil">Drop a project file to open it</div>}

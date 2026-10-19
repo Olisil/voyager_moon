@@ -92,6 +92,10 @@ export interface Scene {
     sun: { azimuth: number; altitude: number };
     /** relief height: 1 = true shape */
     relief: number;
+    /** outlines of maria, basins and big craters; colour "auto" follows the look */
+    areas: { on: boolean; names: boolean; color: string };
+    /** landing sites and landmarks, as points */
+    sights: { on: boolean; names: boolean };
   };
   signs: Sign[];
   signScale: number;
@@ -177,7 +181,7 @@ export function newScene(name = "Scene 1", lookFrom?: Scene): Scene {
     look: lookFrom
       ? structuredClone(lookFrom.look)
       : {
-          theme: "photo-sun",
+          theme: "curves",
           terrain: true,
           terrainStyle: "shading",
           placeNames: false,
@@ -189,6 +193,8 @@ export function newScene(name = "Scene 1", lookFrom?: Scene): Scene {
           markers: defaultMarkers(),
           sun: { azimuth: 100, altitude: 14 },
           relief: 1,
+          areas: { on: true, names: true, color: "auto" },
+          sights: { on: true, names: true },
         },
     signs: [],
     signScale: lookFrom?.signScale ?? 1,
@@ -273,6 +279,9 @@ function coerceScene(raw: Partial<Scene>, i: number): Scene {
   look.compass = { ...base.look.compass, ...raw.look?.compass };
   look.markers = { ...defaultMarkers(), ...raw.look?.markers };
   look.sun = { ...base.look.sun, ...raw.look?.sun };
+  look.areas = { ...base.look.areas, ...raw.look?.areas };
+  look.sights = { ...base.look.sights, ...raw.look?.sights };
+  if (!["curves", "curves-paper", "curves-blueprint", "curves-colour", "relief"].includes(look.theme)) look.theme = base.look.theme;
   return {
     ...base,
     ...raw,

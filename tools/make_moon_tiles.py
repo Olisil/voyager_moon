@@ -2,18 +2,17 @@
 """
 Makes the Moon map data for Voyager Moon.
 
-Reads NASA's Lunar Reconnaissance Orbiter maps, as published by USGS Astrogeology:
-  - LOLA elevation, 118 m per pixel (8 GB):
+Reads the Moon's height map from NASA's Lunar Reconnaissance Orbiter (LOLA, 118 m per pixel,
+8 GB), as published by USGS Astrogeology:
     https://planetarymaps.usgs.gov/mosaic/Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif
-  - LROC WAC image mosaic, 100 m per pixel (5.5 GB):
-    https://planetarymaps.usgs.gov/mosaic/Lunar_LRO_LROC-WAC_Mosaic_global_100m_June2013.tif
 
-The files are read straight from USGS over the internet, only the parts that are needed (a coarse
+The file is read straight from USGS over the internet, only the parts that are needed (a coarse
 version of the whole Moon, and the full detail around each site below). You can also download
-the two files first and pass their paths with --dem and --img.
+it first and pass its path with --dem.
 
-It writes web map tiles (elevation and image) packed into a few files in src/moon-data/, which the
-app bundles. Run it from the project folder:
+It writes height tiles packed into a few files in src/moon-data/, which the app bundles. The app
+draws everything from them: the 3D surface, the height curves and the sun shading. No images.
+Run it from the project folder:
 
     pip install rasterio numpy pillow
     python tools/make_moon_tiles.py
@@ -22,11 +21,10 @@ Options:
     --sites apollo17,apollo11     which detailed sites to make (see SITES below; "all" for every one)
     --global-ppd 8                detail of the whole-Moon layer, pixels per degree
     --dem PATH_OR_URL             elevation GeoTIFF (default: the USGS file above)
-    --img PATH_OR_URL             image GeoTIFF (default: the USGS file above)
     --out src/moon-data           where to write
     --yes                         don't ask before downloading
 
-Elevation tiles store real lunar metres: height = (R*65536 + G*256 + B) / 10 - 20000.
+Tiles use the Terrarium encoding, in real lunar metres: height = R*256 + G + B/256 - 32768.
 """
 from __future__ import annotations
 
@@ -51,7 +49,6 @@ except ImportError:  # pragma: no cover
 
 USGS = "https://planetarymaps.usgs.gov/mosaic/"
 DEM_URL = USGS + "Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif"
-IMG_URL = USGS + "Lunar_LRO_LROC-WAC_Mosaic_global_100m_June2013.tif"
 DEM_SCALE = 0.5  # stored value × 0.5 = metres (from the USGS label)
 
 TILE = 256
@@ -190,18 +187,16 @@ def tiles_for_box(z: int, lat: float, lon: float, half: float):
 
 
 def encode_dem(h: np.ndarray, step: float) -> bytes:
-    if step > 0.1:
+    """Terrarium PNG: height + 32768 = R*256 + G + B/256."""
+    if step > 0:
         h = np.round(h / step) * step
-    v = np.clip(np.round((h + 20000.0) * 10.0), 0, 2**24 - 1).astype(np.uint32)
-    rgb = np.stack([(v >> 16) & 255, (v >> 8) & 255, v & 255], axis=-1).astype(np.uint8)
+    v = np.clip(h + 32768.0, 0, 65535.996)
+    whole = np.floor(v)
+    r = (whole // 256).astype(np.uint8)
+    g = (whole % 256).astype(np.uint8)
+    b = np.floor((v - whole) * 256).astype(np.uint8)
     buf = io.BytesIO()
-    Image.fromarray(rgb, "RGB").save(buf, "PNG", optimize=True)
-    return buf.getvalue()
-
-
-def encode_img(g: np.ndarray) -> bytes:
-    buf = io.BytesIO()
-    Image.fromarray(np.clip(g, 0, 255).astype(np.uint8), "L").save(buf, "JPEG", quality=86, optimize=True)
+    Image.fromarray(np.stack([r, g, b], axis=-1), "RGB").save(buf, "PNG", optimize=True)
     return buf.getvalue()
 
 
@@ -242,7 +237,6 @@ class Packer:
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dem", default=DEM_URL)
-    ap.add_argument("--img", default=IMG_URL)
     ap.add_argument("--dem-scale", type=float, default=None, help="multiply stored elevation values by this to get metres (default: from the file, else 0.5 for whole numbers)")
     ap.add_argument("--sites", default="apollo17")
     ap.add_argument("--global-ppd", type=float, default=8.0)
@@ -258,19 +252,17 @@ def main():
 
     print("Opening the maps…")
     dem = open_raster(a.dem)
-    img = open_raster(a.img)
     describe(dem, "Elevation")
-    describe(img, "Image")
     if a.dem_scale is None:
         tagged = dem.scales[0] if dem.scales else 1.0
         a.dem_scale = tagged if tagged not in (0, 1) else (DEM_SCALE if np.issubdtype(np.dtype(dem.dtypes[0]), np.integer) else 1.0)
     print(f"  Elevation values × {a.dem_scale} = metres")
 
     # What reading will cost when the files are remote.
-    remote = a.dem.startswith("http") or a.img.startswith("http")
+    remote = a.dem.startswith("http")
     if remote:
         mb = 0.0
-        for ds in (dem, img):
+        for ds in (dem,):
             _, _, _, dlat = geo(ds)
             rows_global = int(round(ds.height * dlat * a.global_ppd))
             mb += estimate_rows_bytes(ds, rows_global) / 1e6
@@ -284,7 +276,6 @@ def main():
 
     print("Reading the whole Moon (coarse)…")
     g_dem = read_global(dem, a.global_ppd, a.dem_scale)
-    g_img = read_global(img, a.global_ppd, 1.0)
 
     pack = Packer(a.out)
     t0 = time.time()
@@ -294,9 +285,7 @@ def main():
             for y in range(n):
                 lon, lat = tile_lonlat(z, x, y)
                 h, _ = g_dem.sample(lon, lat)
-                v, _ = g_img.sample(lon, lat)
                 pack.add("dem", z, x, y, encode_dem(h, 1.0), None)
-                pack.add("img", z, x, y, encode_img(v), None)
     print(f"  whole Moon, zoom 0–{a.global_zoom}: {time.time() - t0:.0f} s")
 
     sites_meta = []
@@ -304,7 +293,6 @@ def main():
         title, lat, lon, half, maxz = SITES[s]
         print(f"Reading {title}…")
         w_dem = read_window(dem, lat, lon, half, a.dem_scale)
-        w_img = read_window(img, lat, lon, half, 1.0)
         count = 0
         for z in range(a.global_zoom + 1, maxz + 1):
             for x, y in tiles_for_box(z, lat, lon, half):
@@ -318,12 +306,7 @@ def main():
                 if not inside.all():
                     hg, _ = g_dem.sample(lon_g, lat_g)
                     h = np.where(inside, h, hg)
-                v, inside_i = w_img.sample(lon_g, lat_g)
-                if not inside_i.all():
-                    vg, _ = g_img.sample(lon_g, lat_g)
-                    v = np.where(inside_i, v, vg)
                 pack.add("dem", z, x, y, encode_dem(h, 0.5), s)
-                pack.add("img", z, x, y, encode_img(v), s)
                 count += 1
         print(f"  {count} detailed tiles")
         half_lon = half / max(0.2, math.cos(math.radians(lat)))
@@ -333,12 +316,12 @@ def main():
     pack.write(
         {
             "version": 1,
-            "encoding": "height = (R*65536 + G*256 + B) / 10 - 20000 (metres)",
+            "encoding": "terrarium",
             "globalZoom": a.global_zoom,
             "maxzoom": maxzoom,
             "sites": sites_meta,
             "made": time.strftime("%Y-%m-%d"),
-            "source": "NASA/GSFC/ASU: LRO LOLA elevation and LROC WAC mosaic, via USGS Astrogeology",
+            "source": "NASA/GSFC: LRO LOLA elevation, via USGS Astrogeology",
         }
     )
 

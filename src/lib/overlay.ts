@@ -4,6 +4,8 @@ import { timeAtS, type RouteModel, type Timeline } from "./model";
 import { drawTopIcon, inkFor, topIcon } from "./topdown";
 import { lineColor } from "./colors";
 import { TRANSPORTS } from "./transports";
+import { lookById } from "./mapStyles";
+import { MOON_PLACES, MOON_R_KM } from "./moonPlaces";
 import type { LngLat, Scene, Sign, TransportId } from "./types";
 
 export const FONT_HEAD = '"Neugrotypeface", "Raleway Variablefont Wght", "Raleway Variable", sans-serif';
@@ -344,6 +346,96 @@ function drawMarkers(g: CanvasRenderingContext2D, o: OverlayInput) {
   }
 }
 
+// ---------- names of areas, and sights ----------
+
+/**
+ * Names of the outlined maria, basins and craters, and the sights (landing sites and landmarks)
+ * as points with names. A name only shows when its area is a sensible size on screen, and never
+ * on top of another name.
+ */
+function drawMoonNames(g: CanvasRenderingContext2D, o: OverlayInput) {
+  const look = o.scene.look;
+  if (o.zoom === undefined || (!look.areas.on && !look.sights.on)) return;
+  const zoom = o.zoom;
+  const pxPerDeg = (512 * Math.pow(2, zoom)) / 360;
+  const kmPerDeg = (Math.PI * MOON_R_KM) / 180;
+  const colour = !look.areas.color || look.areas.color === "auto" ? lookById(look.theme).marks : look.areas.color;
+  const ink = o.brightMap ? "#1a1a1a" : "#f2f2f2";
+  const halo = o.brightMap ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.75)";
+  const taken: [number, number, number, number][] = [];
+  const free = (x: number, y: number, w: number, h: number) => {
+    if (x + w < 0 || y + h < 0 || x > o.width || y > o.height) return false;
+    for (const [a, b, c, d] of taken) if (x < a + c && x + w > a && y < b + d && y + h > b) return false;
+    taken.push([x, y, w, h]);
+    return true;
+  };
+  const text = (label: string, x: number, y: number, font: string, fill: string, align: CanvasTextAlign, spacing = "0px") => {
+    g.font = font;
+    (g as CanvasRenderingContext2D & { letterSpacing: string }).letterSpacing = spacing;
+    const w = g.measureText(label).width;
+    const h = parseFloat(font.match(/(\d+(?:\.\d+)?)px/)?.[1] ?? "12");
+    const left = align === "center" ? x - w / 2 : x;
+    if (!free(left - 3, y - h / 2 - 2, w + 6, h + 4)) return false;
+    g.textAlign = align;
+    g.textBaseline = "middle";
+    g.lineJoin = "round";
+    g.lineWidth = 3;
+    g.strokeStyle = halo;
+    g.strokeText(label, x, y);
+    g.fillStyle = fill;
+    g.fillText(label, x, y);
+    return true;
+  };
+
+  g.save();
+  // sights first: they are small and exact, so they win over area names
+  if (look.sights.on) {
+    for (const p of MOON_PLACES) {
+      if (p.kind !== "site" && p.kind !== "feature") continue;
+      if (zoom < (p.kind === "site" ? 3.5 : 5.5)) continue;
+      const s = o.toScreen([p.lon, p.lat]);
+      if (s.x < -20 || s.y < -20 || s.x > o.width + 20 || s.y > o.height + 20) continue;
+      // a sign already marks this place
+      if (o.scene.signs.some((sg) => {
+        const q = o.toScreen(sg.at);
+        return Math.hypot(q.x - s.x, q.y - s.y) < 24;
+      })) continue;
+      g.save();
+      g.translate(s.x, s.y);
+      g.beginPath();
+      if (p.kind === "site") g.arc(0, 0, 4.2, 0, Math.PI * 2);
+      else {
+        g.moveTo(0, -5);
+        g.lineTo(4.5, 0);
+        g.lineTo(0, 5);
+        g.lineTo(-4.5, 0);
+        g.closePath();
+      }
+      g.fillStyle = ink;
+      g.fill();
+      g.lineWidth = 2;
+      g.strokeStyle = halo;
+      g.stroke();
+      g.restore();
+      taken.push([s.x - 6, s.y - 6, 12, 12]);
+      if (look.sights.names) text(p.name, s.x + 9, s.y, `600 12px ${FONT_BODY}`, ink, "left");
+    }
+  }
+  if (look.areas.on && look.areas.names) {
+    for (const p of MOON_PLACES) {
+      if (p.kind !== "mare" && p.kind !== "basin" && p.kind !== "crater") continue;
+      const sizeKm = p.size === undefined ? 1400 : typeof p.size === "number" ? p.size : Math.max(...p.size);
+      const r = ((sizeKm / 2 / kmPerDeg) * pxPerDeg) / Math.max(0.1, Math.cos((p.lat * Math.PI) / 180));
+      const crater = p.kind === "crater";
+      if (crater ? r < 16 || r > 900 : r < 45 || r > 1600) continue;
+      const s = o.toScreen([p.lon, p.lat]);
+      if (crater) text(p.name, s.x, s.y, `500 12px ${FONT_BODY}`, colour, "center");
+      else text(p.name.toUpperCase(), s.x, s.y, `600 ${r > 220 ? 15 : 13}px ${FONT_BODY}`, colour, "center", "2.5px");
+    }
+  }
+  g.restore();
+}
+
 // ---------- signs ----------
 
 function textWidth(g: CanvasRenderingContext2D, text: string) {
@@ -618,6 +710,7 @@ function drawCredit(g: CanvasRenderingContext2D, o: OverlayInput) {
 export function drawOverlay(g: CanvasRenderingContext2D, o: OverlayInput): Hit[] {
   g.save();
   g.scale(o.scale, o.scale);
+  drawMoonNames(g, o);
   drawMarkers(g, o);
   const hits = drawSigns(g, o);
   drawSymbol(g, o);

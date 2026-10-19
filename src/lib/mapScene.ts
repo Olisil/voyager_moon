@@ -1,6 +1,7 @@
 import maplibregl, { type GeoJSONSource, type Map as MLMap } from "maplibre-gl";
 import { lookById } from "./mapStyles";
-import { demSource, registerMoonProtocol } from "./moonData";
+import { contourTiles, demSource, registerMoonProtocol } from "./moonData";
+import { areaOutlines } from "./moonPlaces";
 import { lineColor } from "./colors";
 import type { FrameState } from "./camera";
 import { pointAt, toLngLat, type Path } from "./geo";
@@ -12,9 +13,12 @@ export { MAP_LOOKS, QUICK_LOOKS, lookById } from "./mapStyles";
 /** Looks with a pale base map get inverted pointers. */
 export const isBrightLook = (id: string) => lookById(id).bright;
 
-export const SRC = { full: "fv-full", drawn: "fv-drawn", ctrl: "fv-ctrl", dem: "fv-dem" } as const;
+export const SRC = { full: "fv-full", drawn: "fv-drawn", ctrl: "fv-ctrl", dem: "fv-dem", shade: "fv-dem-shade", contours: "fv-contours-src", areas: "fv-areas-src" } as const;
 export const LYR = {
   hillshade: "fv-hillshade",
+  contours: "fv-contours",
+  areas: "fv-areas",
+  areasDashed: "fv-areas-dashed",
   ahead: "fv-ahead",
   casing: "fv-casing",
   solid: "fv-line-solid",
@@ -50,6 +54,7 @@ export function createMap(container: HTMLElement, scene: Scene): MLMap {
     fadeDuration: 0,
   });
   currentTheme.set(map, theme.id);
+  if (import.meta.env.DEV) (window as unknown as { __map: MLMap }).__map = map;
   return map;
 }
 
@@ -76,6 +81,8 @@ export function installScene(map: MLMap) {
     if (!map.getSource(id)) map.addSource(id, { type: "geojson", data: EMPTY });
   }
   if (!map.getSource(SRC.dem)) map.addSource(SRC.dem, demSource());
+  // the shading reads the same tiles through its own source (MapLibre draws it better that way)
+  if (!map.getSource(SRC.shade)) map.addSource(SRC.shade, demSource());
   const add = (layer: maplibregl.AddLayerObject, before?: string) => {
     if (!map.getLayer(layer.id)) map.addLayer(layer, before);
   };
@@ -84,8 +91,50 @@ export function installScene(map: MLMap) {
     {
       id: LYR.hillshade,
       type: "hillshade",
-      source: SRC.dem,
+      source: SRC.shade,
       paint: { "hillshade-method": "basic", "hillshade-illumination-anchor": "map", "hillshade-exaggeration": 1 },
+    },
+    belowRoads,
+  );
+  // Height curves, made in the browser from the same height tiles; major lines drawn stronger.
+  if (!map.getSource(SRC.contours)) map.addSource(SRC.contours, { type: "vector", tiles: [contourTiles()], maxzoom: 15 });
+  add(
+    {
+      id: LYR.contours,
+      type: "line",
+      source: SRC.contours,
+      "source-layer": "contours",
+      layout: { "line-join": "round" },
+      paint: {
+        "line-color": "#e6e6e6",
+        "line-opacity": ["match", ["get", "level"], 1, 0.78, 0.32],
+        "line-width": ["interpolate", ["linear"], ["zoom"], 3, ["match", ["get", "level"], 1, 0.9, 0.45], 12, ["match", ["get", "level"], 1, 1.6, 0.8]],
+      },
+    },
+    belowRoads,
+  );
+  // Outlines of famous areas: craters solid (their true rims), maria and basins dashed (approximate).
+  if (!map.getSource(SRC.areas)) map.addSource(SRC.areas, { type: "geojson", data: areaOutlines() });
+  const areaWidth = ["interpolate", ["linear"], ["zoom"], 2, 1, 8, 1.6, 12, 2.4] as unknown as number;
+  add(
+    {
+      id: LYR.areas,
+      type: "line",
+      source: SRC.areas,
+      filter: ["==", ["get", "kind"], "crater"],
+      layout: { "line-join": "round", visibility: "none" },
+      paint: { "line-color": "#E6FF4C", "line-opacity": 0.85, "line-width": areaWidth },
+    },
+    belowRoads,
+  );
+  add(
+    {
+      id: LYR.areasDashed,
+      type: "line",
+      source: SRC.areas,
+      filter: ["!=", ["get", "kind"], "crater"],
+      layout: { "line-join": "round", visibility: "none" },
+      paint: { "line-color": "#E6FF4C", "line-opacity": 0.7, "line-width": areaWidth, "line-dasharray": [3, 2.5] },
     },
     belowRoads,
   );
@@ -164,9 +213,29 @@ export function applyLook(map: MLMap, scene: Scene) {
   set("hillshade-shadow-color", withAlpha(shade.shadow, shade.opacity));
   set("hillshade-highlight-color", withAlpha(shade.highlight, shade.opacity * 0.6));
   set("hillshade-accent-color", withAlpha(shade.accent, shade.opacity * 0.5));
+  const curves = lookById(look.theme).curves;
+  map.setLayoutProperty(LYR.contours, "visibility", curves ? "visible" : "none");
+  if (curves) {
+    const setC = (prop: string, value: unknown) => {
+      if (JSON.stringify(map.getPaintProperty(LYR.contours, prop)) !== JSON.stringify(value)) map.setPaintProperty(LYR.contours, prop, value);
+    };
+    setC("line-color", curves.color);
+    setC("line-opacity", ["match", ["get", "level"], 1, curves.major, curves.minor]);
+  }
+  const areaColor = areaColour(scene);
+  for (const id of [LYR.areas, LYR.areasDashed]) {
+    map.setLayoutProperty(id, "visibility", look.areas.on ? "visible" : "none");
+    if (map.getPaintProperty(id, "line-color") !== areaColor) map.setPaintProperty(id, "line-color", areaColor);
+  }
   const terrain = map.getTerrain();
   if (look.terrain && (!terrain || terrain.exaggeration !== look.relief)) map.setTerrain({ source: SRC.dem, exaggeration: look.relief });
   if (!look.terrain && terrain) map.setTerrain(null);
+}
+
+/** The colour of area outlines and sights: picked, or the look's own. */
+export function areaColour(scene: Scene): string {
+  const c = scene.look.areas.color;
+  return !c || c === "auto" ? lookById(scene.look.theme).marks : c;
 }
 
 function withAlpha(hex: string, a: number): string {

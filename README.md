@@ -1,19 +1,20 @@
 # Voyager Moon
 
 Animated routes on the Moon, as a page on nassau.se: a moonwalk, a rover drive or a lander hop
-over real lunar mountains and craters, lit by a sun you place, with signs, a camera move and an
-MP4 rendered in the browser. Built on Voyager Earth (same steps, editor, signs, camera and
+over the real mountains and craters of the Moon, drawn in 3D as height curves with a little sun
+shading, with signs, a camera move and an MP4 rendered in the browser. No images: everything is
+drawn from the Moon's height data, which lives in the repository. Built on Voyager Earth (same steps, editor, signs, camera and
 export). No backend, no accounts: projects live in the browser (IndexedDB) and can be downloaded
 as `.voyager-moon.json` files.
 
-**First version.** The Moon map data is made once with a script (below) and bundled with the
-app. Until it is, the app works on flat grey ground.
+The Moon's height data is made once with a script (below) and bundled with the app. Until it
+is, the app works on flat ground.
 
 ## 1. Make the Moon map data (once)
 
-The script reads NASA's Lunar Reconnaissance Orbiter maps from USGS Astrogeology, only the parts
-it needs, and writes them as map tiles into `src/moon-data/` (about 20–30 MB for the whole Moon
-coarse plus the Apollo 17 valley in detail).
+The script reads NASA's Lunar Reconnaissance Orbiter height map from USGS Astrogeology, only the
+parts it needs, and writes it as height tiles into `src/moon-data/` (about 10–15 MB for the whole
+Moon coarse plus the Apollo 17 valley in detail).
 
 On Windows:
 
@@ -24,20 +25,18 @@ On Windows:
        py -m pip install rasterio numpy pillow
        py tools\make_moon_tiles.py
 
-   It shows the maps it found and how much it will download, and asks before it starts. It can
+   It shows the map it found and how much it will download, and asks before it starts. It can
    take a while on a slow line; it prints its progress.
 
 On a Mac: `python3 -m pip install rasterio numpy pillow`, then `python3 tools/make_moon_tiles.py`.
 
 More detailed places: `--sites apollo17,apollo11,apollo15,apollo16,tycho,copernicus` (or
 `all`); each adds a few MB. Less to download for the whole-Moon layer: `--global-ppd 4`. If the
-download keeps failing, download the two files below in a browser and pass them with
-`--dem path\to\file.tif --img path\to\file.tif`.
+download keeps failing, download the file below in a browser and pass it with
+`--dem path\to\file.tif`.
 
-- Elevation, LRO LOLA 118 m/px (8 GB):
+- Heights, LRO LOLA 118 m/px (8 GB):
   https://planetarymaps.usgs.gov/mosaic/Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif
-- Image, LRO LROC WAC mosaic 100 m/px (5.5 GB):
-  https://planetarymaps.usgs.gov/mosaic/Lunar_LRO_LROC-WAC_Mosaic_global_100m_June2013.tif
 
 ## 2. Run locally (optional)
 
@@ -59,34 +58,43 @@ any mount path works. The map data in `src/moon-data/` is bundled like the app's
 
 ## How the Moon is drawn
 
-- **Tiles**: `lib/moonData.ts` serves the bundled tiles to MapLibre through a `moon://`
-  protocol. Outside the detailed sites, deeper tiles are made on the fly from the coarser ones,
-  so the ground never goes blank when zooming in.
+- **Height tiles**: `lib/moonData.ts` serves the bundled tiles (Terrarium-encoded, real metres) to
+  MapLibre through a `moon://` protocol. Outside the detailed sites, deeper tiles are made on the
+  fly from the coarser ones, so the ground never goes blank when zooming in.
+- **Height curves**: made in the browser from the same tiles (maplibre-contour). The spacing
+  follows the zoom: 2 km on the whole Moon, then 1 km, 500, 250, 100, 50, 25 and 10 m as you zoom
+  in, with every major line drawn stronger.
 - **True proportions**: the map is web mercator sized like the Earth, so a lunar kilometre is
   drawn 3.67 times larger than an Earth one; heights are scaled up by the same factor (Earth
-  radius ÷ Moon radius) when decoded. "Relief height 1×" is the real shape.
-- **Sun**: a hillshade from the elevation, lit from the direction and height set in the Look
-  step. It shades slopes; it doesn't cast long shadows across the ground (yet).
-- **Looks**: Photo and sun (the LROC mosaic with sun shading), Orbiter photo, Sunlit relief
-  (shading only), Height colours, Silver.
+  radius ÷ Moon radius) when the 3D surface and the shading read them. "Relief height 1×" is the
+  real shape.
+- **Sun**: shading from the heights, lit from the direction and height set in the Look step. It
+  darkens slopes facing away from the sun; it doesn't cast long shadows across the ground.
+- **Looks**: Height curves (dark, the default), Curves on paper, Blueprint, Curves and height
+  colours, Sunlit relief (shading only).
+- **Areas and sights** (`lib/moonPlaces.ts`): craters outlined as circles of their catalogued
+  diameter (their rims), maria and big basins as dashed ovals of about their size (a guide, not
+  their true shores), with names that show when an area is a good size on screen. Sights are the
+  landing sites (dots) and landmarks such as the Straight Wall, Hadley Rille and the Alpine
+  Valley (diamonds). The outline colour follows the look, or can be picked.
 - **Ways to travel**: moonwalk (boot prints), lunar rover, lander hop (a ballistic arc drawn as
   a straight flight line), and a plain arrow.
-- **Places**: the search box finds landing sites, maria, big craters, mountains and rilles from a
-  built-in list (`lib/geocode.ts`), instantly and offline.
+- **Places**: the search box finds landing sites, maria, craters, mountains and rilles from the
+  same list, instantly and offline, and frames outlined areas to fit the screen.
 - **Distances** use the Moon's radius, 1,737.4 km.
 
-## Limits of this first version
+## Limits
 
-- Detail: about 118 m per pixel for heights and 100 m for the image. The whole Moon looks good
-  from high up down to views a few kilometres wide; closer than that it gets soft.
+- Detail: about 118 m per pixel. Curves closer than about 20 m apart look rounded when zoomed in
+  close, and outside the detailed sites the fine curves come from coarser data.
 - The map stops at 85° north and south (web mercator), so the poles themselves (Shackleton,
   the Artemis region) need a different map projection.
 - The Apollo 17 demo route is approximate, not the surveyed station positions.
 
 ## Data sources and licences
 
-- LRO LOLA elevation and LROC WAC mosaic: NASA/GSFC/Arizona State University, distributed by
-  USGS Astrogeology. NASA data is not copyrighted; credit is burned into the video.
+- LRO LOLA heights: NASA/GSFC, distributed by USGS Astrogeology. NASA data is not copyrighted;
+  credit is burned into the video.
 - Place positions: IAU Gazetteer of Planetary Nomenclature and published landing coordinates.
 
 ## Design system

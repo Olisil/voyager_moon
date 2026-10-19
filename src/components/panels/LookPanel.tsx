@@ -192,6 +192,44 @@ export function LookPanel(props: {
         <Toggle label="Show the way ahead" hint="A faint dashed line for the part not travelled yet." checked={look.showAhead} onChange={(v) => setLook({ showAhead: v })} />
       </Fold>
 
+      <Fold title="Areas and sights">
+        <Toggle
+          label="Outline famous areas"
+          hint="Maria and big basins as dashed ovals of about their size, craters as solid circles on their rims."
+          checked={look.areas.on}
+          onChange={(v) => setLook({ areas: { ...look.areas, on: v } })}
+        />
+        {look.areas.on && (
+          <div className="nested">
+            <Toggle label="Names of the areas" checked={look.areas.names} onChange={(v) => setLook({ areas: { ...look.areas, names: v } })} />
+            <Field label="Outline colour">
+              <ColorPicker label="Outline colour" value={look.areas.color === AUTO ? "" : look.areas.color} onChange={(c) => setLook({ areas: { ...look.areas, color: c } })} />
+              <button
+                type="button"
+                className={`btn btn-small auto-colour${look.areas.color === AUTO ? " on" : ""}`}
+                aria-pressed={look.areas.color === AUTO}
+                onClick={() => setLook({ areas: { ...look.areas, color: AUTO } })}
+              >
+                <span className="auto-dot" style={{ background: lookById(look.theme).marks }} aria-hidden />
+                Auto, fits the look
+              </button>
+            </Field>
+          </div>
+        )}
+        <Toggle
+          label="Sights"
+          hint="Landing sites as dots, landmarks like the Straight Wall and Hadley Rille as diamonds."
+          checked={look.sights.on}
+          onChange={(v) => setLook({ sights: { ...look.sights, on: v } })}
+        />
+        {look.sights.on && (
+          <div className="nested">
+            <Toggle label="Names of the sights" checked={look.sights.names} onChange={(v) => setLook({ sights: { ...look.sights, names: v } })} />
+          </div>
+        )}
+        <p className="hint">Names show when an area is a good size on screen, and never on top of each other.</p>
+      </Fold>
+
       <Fold title="Start, finish and legs" defaultOpen={marked}>
         <Field label="Start">
           <Segmented<StartMarker>
