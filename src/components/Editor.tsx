@@ -22,6 +22,7 @@ import { HeaderNav } from "./HeaderNav";
 import { MapControls } from "./MapControls";
 import logoUrl from "../assets/voyager-moon-logo.svg";
 import { Segmented } from "./Controls";
+import { hasMoonData } from "../lib/moonData";
 
 type Step = "route" | "look" | "signs" | "camera" | "export";
 const STEPS: { id: Step; label: string; next: string }[] = [
@@ -881,6 +882,15 @@ function EditorLoaded({ initial }: { initial: Project }) {
               <div className="frame-size" aria-label={`Video size ${project.output.aspect}, ${out.width} by ${out.height} pixels`}>
                 {project.output.aspect} · {out.width}×{out.height}
               </div>
+              {!rendering && !hasMoonData() && (
+                <div className="getting-started no-data" role="status">
+                  <strong>No height data yet</strong>
+                  <span>
+                    The Moon's heights aren't bundled with this build, so the ground is flat and has no height curves or shading. Run{" "}
+                    <code>tools/make_moon_tiles.py</code> and upload the <code>src/moon-data</code> folder it fills (see the README).
+                  </span>
+                </div>
+              )}
               {mode === "route-edit" && !rendering && scene.route.points.length === 0 && (
                 <div className="getting-started">
                   <strong>Start here</strong>

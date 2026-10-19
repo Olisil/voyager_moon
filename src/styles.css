@@ -1723,6 +1723,14 @@ label.source-card:hover,
   color: var(--accent);
   font-size: 16px;
 }
+.getting-started.no-data {
+  top: 48px;
+  bottom: auto;
+  border-color: #f0592b;
+}
+.getting-started.no-data strong {
+  color: #f0592b;
+}
 
 .timeline {
   display: flex;

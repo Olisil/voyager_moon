@@ -19,6 +19,7 @@ export const RELIEF_SCALE = 6371.0088 / MOON_RADIUS_KM;
 
 interface MoonIndex {
   version: number;
+  encoding?: string;
   globalZoom: number;
   maxzoom: number;
   sites: { id: string; title: string; lat: number; lon: number; bounds: [number, number, number, number]; maxzoom: number }[];
@@ -31,7 +32,8 @@ const packUrls = import.meta.glob("../moon-data/*.bin", { eager: true, query: "?
 const INDEX: MoonIndex | null = Object.values(indexFiles)[0] ?? null;
 const PACKS = new Map(Object.entries(packUrls).map(([path, url]) => [path.replace(/^.*\//, "").replace(/\.bin$/, ""), url]));
 
-export const hasMoonData = () => !!INDEX && Object.keys(INDEX.tiles).length > 0;
+/** True when height tiles in the current (Terrarium) format are bundled. Data made by the 0.1 script is ignored. */
+export const hasMoonData = () => !!INDEX && INDEX.encoding === "terrarium" && Object.keys(INDEX.tiles ?? {}).length > 0;
 export const moonSites = () => INDEX?.sites ?? [];
 export const moonMaxZoom = () => Math.max(INDEX?.maxzoom ?? 4, 4);
 
@@ -50,7 +52,8 @@ function pack(name: string): Promise<ArrayBuffer> {
 }
 
 async function rawTile(layer: string, z: number, x: number, y: number): Promise<ArrayBuffer | null> {
-  const hit = INDEX?.tiles[`${layer}/${z}/${x}/${y}`];
+  if (!hasMoonData()) return null;
+  const hit = INDEX!.tiles[`${layer}/${z}/${x}/${y}`];
   if (!hit) return null;
   const [name, offset, length] = hit;
   const buf = await pack(name);

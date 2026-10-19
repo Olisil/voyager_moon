@@ -13,14 +13,18 @@ is, the app works on flat ground.
 ## 1. Make the Moon map data (once)
 
 The script reads NASA's Lunar Reconnaissance Orbiter height map from USGS Astrogeology, only the
-parts it needs, and writes it as height tiles into `src/moon-data/` (about 10–15 MB for the whole
-Moon coarse plus the Apollo 17 valley in detail).
+parts it needs, and writes it as height tiles into `src/moon-data/` (roughly 25–40 MB: the whole
+Moon coarse, plus the Apollo 11, 15, 16 and 17 sites, Tycho and Copernicus in detail). Then
+upload the filled `src/moon-data` folder (the `.bin` files and `index.json`) to GitHub with the
+rest of the app. Until you do, the editor shows a "No height data yet" notice.
 
 On Windows:
 
 1. Install Python 3.11 or newer from python.org (tick "Add python.exe to PATH").
-2. Open this project folder in Explorer, type `cmd` in the address bar and press Enter.
-3. Run:
+2. Double-click `tools\make-moon-data.bat`. It installs what the script needs and runs it.
+
+Or by hand: open this project folder in Explorer, type `cmd` in the address bar, press Enter
+and run:
 
        py -m pip install rasterio numpy pillow
        py tools\make_moon_tiles.py
@@ -30,8 +34,8 @@ On Windows:
 
 On a Mac: `python3 -m pip install rasterio numpy pillow`, then `python3 tools/make_moon_tiles.py`.
 
-More detailed places: `--sites apollo17,apollo11,apollo15,apollo16,tycho,copernicus` (or
-`all`); each adds a few MB. Less to download for the whole-Moon layer: `--global-ppd 4`. If the
+Fewer detailed places, for a smaller download: `--sites apollo17,apollo15` (any of apollo11,
+apollo15, apollo16, apollo17, tycho, copernicus). Less to download for the whole-Moon layer: `--global-ppd 4`. If the
 download keeps failing, download the file below in a browser and pass it with
 `--dem path\to\file.tif`.
 

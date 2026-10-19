@@ -18,7 +18,7 @@ Run it from the project folder:
     python tools/make_moon_tiles.py
 
 Options:
-    --sites apollo17,apollo11     which detailed sites to make (see SITES below; "all" for every one)
+    --sites apollo17,apollo11     which detailed sites to make (see SITES below; default "all")
     --global-ppd 8                detail of the whole-Moon layer, pixels per degree
     --dem PATH_OR_URL             elevation GeoTIFF (default: the USGS file above)
     --out src/moon-data           where to write
@@ -200,45 +200,63 @@ def encode_dem(h: np.ndarray, step: float) -> bytes:
     return buf.getvalue()
 
 
+PACK_BYTES = 1_000_000
+
+
+def morton(x: int, y: int) -> int:
+    """Interleaves the bits of x and y, so tiles that are near each other end up in the same file."""
+    m = 0
+    for i in range(16):
+        m |= ((x >> i) & 1) << (2 * i) | ((y >> i) & 1) << (2 * i + 1)
+    return m
+
+
 class Packer:
-    """Tiles grouped into a few files (an upload to GitHub stays small), with an index of where each is."""
+    """Tiles packed into files of about 1 MB (small enough to upload to GitHub in a browser, and the app only
+    downloads the files for the area on screen), with an index of where each tile is."""
 
     def __init__(self, out: str):
         self.out = out
-        self.chunks: dict[str, bytearray] = {}
-        self.index: dict[str, list] = {}
+        self.groups: dict[str, list] = {}
 
     def add(self, layer: str, z: int, x: int, y: int, data: bytes, site: str | None):
-        # the whole Moon in at most 2 × 2 files per zoom level; a site in one file per zoom level
-        if site:
-            name = f"{layer}-{site}-{z}"
-        else:
-            s = max(0, z - 1)
-            name = f"{layer}-moon-{z}-{x >> s}-{y >> s}"
-        buf = self.chunks.setdefault(name, bytearray())
-        self.index[f"{layer}/{z}/{x}/{y}"] = [name, len(buf), len(data)]
-        buf.extend(data)
+        # grouped by site (or the whole Moon) and zoom level; split into ~1 MB files when written
+        group = f"{layer}-{site}-{z}" if site else f"{layer}-moon-{z}"
+        self.groups.setdefault(group, []).append((layer, z, x, y, data))
 
     def write(self, meta: dict):
         os.makedirs(self.out, exist_ok=True)
         for f in os.listdir(self.out):
             if f.endswith(".bin") or f == "index.json":
                 os.remove(os.path.join(self.out, f))
+        index: dict[str, list] = {}
+        files: dict[str, bytearray] = {}
+        for group, tiles in self.groups.items():
+            tiles.sort(key=lambda t: morton(t[2], t[3]))
+            part, buf = 0, bytearray()
+            for layer, z, x, y, data in tiles:
+                if buf and len(buf) + len(data) > PACK_BYTES:
+                    files[f"{group}-{part}"] = buf
+                    part, buf = part + 1, bytearray()
+                index[f"{layer}/{z}/{x}/{y}"] = [f"{group}-{part}", len(buf), len(data)]
+                buf.extend(data)
+            if buf:
+                files[f"{group}-{part}"] = buf
         total = 0
-        for name, buf in self.chunks.items():
+        for name, buf in files.items():
             with open(os.path.join(self.out, name + ".bin"), "wb") as fh:
                 fh.write(buf)
             total += len(buf)
         with open(os.path.join(self.out, "index.json"), "w") as fh:
-            json.dump({**meta, "tiles": self.index}, fh, separators=(",", ":"))
-        print(f"Wrote {len(self.index)} tiles in {len(self.chunks)} files, {total / 1e6:.1f} MB, to {self.out}")
+            json.dump({**meta, "tiles": index}, fh, separators=(",", ":"))
+        print(f"Wrote {len(index)} tiles in {len(files)} files, {total / 1e6:.1f} MB, to {self.out}")
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dem", default=DEM_URL)
     ap.add_argument("--dem-scale", type=float, default=None, help="multiply stored elevation values by this to get metres (default: from the file, else 0.5 for whole numbers)")
-    ap.add_argument("--sites", default="apollo17")
+    ap.add_argument("--sites", default="all")
     ap.add_argument("--global-ppd", type=float, default=8.0)
     ap.add_argument("--global-zoom", type=int, default=GLOBAL_ZOOM)
     ap.add_argument("--out", default=os.path.join("src", "moon-data"))
