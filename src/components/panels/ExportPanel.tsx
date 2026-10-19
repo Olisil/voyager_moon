@@ -77,8 +77,8 @@ export function ExportPanel(props: {
         />
       </Field>
       <Toggle
-        label="Map credit in the corner"
-        hint="OpenStreetMap's licence asks for credit wherever the map is shown. Turn it off only if you credit it elsewhere."
+        label="Data credit in the corner"
+        hint="A small line naming the Moon data: NASA's Lunar Reconnaissance Orbiter (LOLA) via USGS. Turn it off if you credit it elsewhere, such as in the video description."
         checked={out.credit}
         disabled={busy}
         onChange={(v) => set({ credit: v })}
