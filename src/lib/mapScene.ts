@@ -81,8 +81,8 @@ export function installScene(map: MLMap) {
     if (!map.getSource(id)) map.addSource(id, { type: "geojson", data: EMPTY });
   }
   if (!map.getSource(SRC.dem)) map.addSource(SRC.dem, demSource());
-  // the shading reads the same tiles through its own source (MapLibre draws it better that way)
-  if (!map.getSource(SRC.shade)) map.addSource(SRC.shade, demSource());
+  // the shading has its own smoothed tiles, so the sun never shows the height data's pixels
+  if (!map.getSource(SRC.shade)) map.addSource(SRC.shade, demSource("shade"));
   const add = (layer: maplibregl.AddLayerObject, before?: string) => {
     if (!map.getLayer(layer.id)) map.addLayer(layer, before);
   };

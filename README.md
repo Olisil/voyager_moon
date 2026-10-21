@@ -73,7 +73,10 @@ any mount path works. The map data in `src/moon-data/` is bundled like the app's
   radius ÷ Moon radius) when the 3D surface and the shading read them. "Relief height 1×" is the
   real shape.
 - **Sun**: shading from the heights, lit from the direction and height set in the Look step. It
-  darkens slopes facing away from the sun; it doesn't cast long shadows across the ground.
+  darkens slopes facing away from the sun; it doesn't cast long shadows across the ground. It
+  stays smooth at any zoom: it reads its own height tiles, drawn between the data points with a
+  cubic B-spline (`lib/moonData.ts`), and `tools/smooth-hillshade.ts` (a small Vite plugin)
+  makes MapLibre keep the slopes in floating point instead of 8 bits.
 - **Looks**: Height curves (dark, the default), Curves on paper, Blueprint, Curves and height
   colours, Sunlit relief (shading only).
 - **Areas and sights** (`lib/moonPlaces.ts`): craters outlined as circles of their catalogued
